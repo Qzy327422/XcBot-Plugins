@@ -437,29 +437,23 @@ async def on_message(event, actions, Manager, Segments, user_message="", is_grou
                 )
                 return True
 
-            if max_texts > 0 and not texts:
-                name = "用户"
-                if at_qQs and at_qQs[0].get('text'):
-                    name = at_qQs[0]['text'].replace('@', '').strip()
-                elif getattr(event, 'sender', None):
-                    name = getattr(event.sender, 'card', None) or getattr(event.sender, 'nickname', None) or "用户"
-                texts.append(name)
-
-            # 准备args对象
+            # 准备args对象 - 对齐原版：at用户昵称为空时通过头像URL反推QQ，再用发送者信息兜底
             user_infos = []
-            if not at_qQs:
-                name = "用户"
-                gender = "unknown"
-                if getattr(event, 'sender', None):
-                    name = getattr(event.sender, 'card', None) or getattr(event.sender, 'nickname', None) or "用户"
-                    gender = getattr(event.sender, 'sex', 'unknown')
-                user_infos.append({"name": name, "gender": gender})
-            else:
-                for at in at_qQs:
-                    user_infos.append({"name": at['text'].replace('@', ''), "gender": "unknown"})
+            sender = getattr(event, 'sender', None)
+            sender_name = (getattr(sender, 'card', None) or getattr(sender, 'nickname', None) or "用户") if sender else "用户"
+            sender_gender = getattr(sender, 'sex', 'unknown') if sender else 'unknown'
 
-            args_obj = {"user_infos": user_infos}
-            # 忽略复杂参数解析，使用默认值
+            if at_qQs:
+                for at in at_qQs:
+                    name = at['text'].replace('@', '').strip()
+                    # at 昵称为空时尝试用发送者昵称（引用时QQ自动加的@通常没有昵称）
+                    if not name:
+                        name = sender_name
+                    user_infos.append({"text": name, "gender": "unknown"})
+            else:
+                user_infos.append({"text": sender_name, "gender": sender_gender})
+
+            args_obj = {"user_infos": [{"name": u["text"], "gender": u["gender"]} for u in user_infos]}
 
             buffers = []
             for url in imgs:
