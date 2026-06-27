@@ -170,6 +170,9 @@ def get_meme_detail(code: str) -> str:
 
 async def on_message(event, actions, Manager, Segments, user_message="", is_group=False, **kwargs):
     try:
+        if not hasattr(event, 'user_id'):
+            return False
+
         user_id = str(event.user_id)
         msg = extract_message_text(event, user_message)
 
@@ -366,6 +369,24 @@ async def on_message(event, actions, Manager, Segments, user_message="", is_grou
                     elif getattr(seg, '__class__', None).__name__ == 'At' and getattr(seg, 'qq', None) and seg.qq != 'all':
                          at_qQs.append({'qq': str(seg.qq), 'text': getattr(seg, 'name', '') or ''})
 
+            # 补全at中名字为空的项
+            if is_group:
+                for at in at_qQs:
+                    if not at.get('text'):
+                        try:
+                            info_res = await actions.get_group_member_info(
+                                group_id=event.group_id, user_id=int(at['qq'])
+                            )
+                            raw = info_res
+                            if hasattr(info_res, 'data'):
+                                raw = info_res.data
+                            if isinstance(raw, dict):
+                                at['text'] = raw.get('card') or raw.get('nickname') or at['qq']
+                            elif hasattr(raw, 'card'):
+                                at['text'] = getattr(raw, 'card', None) or getattr(raw, 'nickname', None) or at['qq']
+                        except Exception:
+                            at['text'] = at['qq']
+
             # 解析引用消息里的图片和@信息
             reply_images = []
             if reply_msg_id:
@@ -437,23 +458,29 @@ async def on_message(event, actions, Manager, Segments, user_message="", is_grou
                 )
                 return True
 
-            # 准备args对象 - 对齐原版：at用户昵称为空时通过头像URL反推QQ，再用发送者信息兜底
+            if max_texts > 0 and not texts:
+                name = "用户"
+                if at_qQs and at_qQs[0].get('text'):
+                    name = at_qQs[0]['text'].replace('@', '').strip()
+                elif getattr(event, 'sender', None):
+                    name = getattr(event.sender, 'card', None) or getattr(event.sender, 'nickname', None) or "用户"
+                texts.append(name)
+
+            # 准备args对象
             user_infos = []
-            sender = getattr(event, 'sender', None)
-            sender_name = (getattr(sender, 'card', None) or getattr(sender, 'nickname', None) or "用户") if sender else "用户"
-            sender_gender = getattr(sender, 'sex', 'unknown') if sender else 'unknown'
-
-            if at_qQs:
-                for at in at_qQs:
-                    name = at['text'].replace('@', '').strip()
-                    # at 昵称为空时尝试用发送者昵称（引用时QQ自动加的@通常没有昵称）
-                    if not name:
-                        name = sender_name
-                    user_infos.append({"text": name, "gender": "unknown"})
+            if not at_qQs:
+                name = "用户"
+                gender = "unknown"
+                if getattr(event, 'sender', None):
+                    name = getattr(event.sender, 'card', None) or getattr(event.sender, 'nickname', None) or "用户"
+                    gender = getattr(event.sender, 'sex', 'unknown')
+                user_infos.append({"name": name, "gender": gender})
             else:
-                user_infos.append({"text": sender_name, "gender": sender_gender})
+                for at in at_qQs:
+                    user_infos.append({"name": at['text'].replace('@', ''), "gender": "unknown"})
 
-            args_obj = {"user_infos": [{"name": u["text"], "gender": u["gender"]} for u in user_infos]}
+            args_obj = {"user_infos": user_infos}
+            # 忽略复杂参数解析，使用默认值
 
             buffers = []
             for url in imgs:
