@@ -1,0 +1,5 @@
+name: play_plugin
+version: 1.0.0
+description: 娱乐菜单、表情包、点歌等功能
+author: Qzy327422
+entry: setup.py
