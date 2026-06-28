@@ -1,0 +1,5 @@
+name: simple_like
+version: 1.0.0
+description: 发送赞我给用户点赞
+author: Qzy327422
+entry: setup.py
