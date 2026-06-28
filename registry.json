@@ -1,1 +1,0 @@
-[{"name":"simple_like","version":"1.0.0","description":"发送赞我给用户点赞","author":"Qzy327422","path":"plugins/simple_like","entry":"setup.py"},{"name":"play_plugin","version":"1.0.0","description":"娱乐菜单、表情包、点歌等功能","author":"Qzy327422","path":"plugins/play_plugin","entry":"setup.py"}]
