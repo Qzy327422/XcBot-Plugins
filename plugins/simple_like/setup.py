@@ -43,7 +43,7 @@ def _plain_text(event, fallback=""):
     return "".join(parts).strip() or str(fallback).strip()
 
 
-async def on_message(event, actions, Manager, Segments, user_message="", is_group=False):
+async def on_message(event, actions, Manager, Segments, user_message="", is_group=False, get_plugin_config=None):
     if _plain_text(event, user_message) != "赞我":
         return False
 
@@ -62,7 +62,12 @@ async def on_message(event, actions, Manager, Segments, user_message="", is_grou
         await reply("今天已经点过赞了，请明天再来吧~")
         return True
 
-    times = min(_LIKE_TIMES, _QQ_DAILY_MAX - current)
+    configured_times = get_plugin_config("like_times", _LIKE_TIMES) if get_plugin_config else _LIKE_TIMES
+    if isinstance(configured_times, bool) or not isinstance(configured_times, (int, float)):
+        configured_times = _LIKE_TIMES
+    elif isinstance(configured_times, float) and not configured_times.is_integer():
+        configured_times = _LIKE_TIMES
+    times = min(max(1, min(_LIKE_TIMES, int(configured_times))), _QQ_DAILY_MAX - current)
 
     try:
         await actions.custom.send_like(user_id=int(user_id), times=times)
